@@ -1,5 +1,7 @@
 # Primeiro teste: Windows e MK-300 V75
 
+**Editor visual disponível:** veja [MK300 Studio](../studio/LEIA-ME.md). Para abrir, execute `ABRIR-STUDIO.cmd` na raiz do projeto.
+
 Este teste lista portas MIDI e consulta o bloco global e o preset atualmente editado. Nao carrega, salva ou substitui presets, nao envia notas e nao modifica configuracoes globais. O firmware V75 foi informado pelo usuario; o script nao detecta a versao.
 
 ## Executar
