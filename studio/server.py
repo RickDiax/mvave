@@ -12,12 +12,14 @@ import threading
 import webbrowser
 
 from core import CATALOG, CONTROL_START, MODELS, Library, Midi, decode, encode, validate
+from automation import Receiver
 
 FOLDER = Path(__file__).resolve().parent
 TOKEN = secrets.token_urlsafe(32)
 LOCK = threading.Lock()
 DATA = Path(os.environ.get('LOCALAPPDATA') or str(Path.home())) / 'MK300Studio'
 LIBRARY = Library(DATA / 'timbres')
+RECEIVER = Receiver(DATA, LOCK)
 
 
 def ports():
@@ -30,6 +32,18 @@ def ports():
 
 
 def dispatch(route, body):
+    if route == '/api/automation-latest':
+        key = RECEIVER.state.get('last_job_id')
+        if not key:
+            raise ValueError('Nenhum pedido recebido ainda.')
+        r = json.loads((DATA / 'recebidos' / (key + '.json')).read_text(encoding='utf-8'))
+        result = decode(bytes.fromhex(r['raw_hex']))
+        result.update(slot=r['slot'], verified=r.get('verified', False))
+        return result
+    if route == '/api/automation-enable':
+        return RECEIVER.enable(body['input'], body['output'], body['slot'])
+    if route == '/api/automation-disable':
+        return RECEIVER.pause()
     if route == '/api/preview':
         return decode(encode(body['raw_hex'], body['draft']))
     if route == '/api/import':
@@ -118,7 +132,11 @@ class Handler(BaseHTTPRequestHandler):
             html = (FOLDER / 'index.html').read_text(encoding='utf-8').replace('__APP_TOKEN__', TOKEN)
             return self.reply(200, html.encode('utf-8'), 'text/html; charset=utf-8')
         if self.path == '/api/bootstrap' and self.headers.get('X-Studio-Token') == TOKEN:
-            return self.reply(200, {'catalog': CATALOG, 'ports': ports(), 'library': LIBRARY.list(), 'data_folder': str(DATA)})
+            return self.reply(200, {'catalog': CATALOG, 'ports': ports(), 'library': LIBRARY.list(), 'data_folder': str(DATA), 'automation': RECEIVER.status()})
+        if self.path == '/api/automation-status' and self.headers.get('X-Studio-Token') == TOKEN:
+            with LOCK:
+                state = RECEIVER.status()
+            return self.reply(200, state)
         return self.reply(404, {'error': 'Nao encontrado.'})
 
     def do_POST(self):
@@ -157,11 +175,13 @@ def main():
     print('Mantenha esta janela aberta. Feche com Ctrl+C ao terminar.', flush=True)
     if not a.no_browser:
         threading.Timer(0.6, lambda: webbrowser.open(url)).start()
+    RECEIVER.start()
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         pass
     finally:
+        RECEIVER.stop()
         server.server_close()
 
 

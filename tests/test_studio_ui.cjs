@@ -32,9 +32,13 @@ async function main(){
     const html=await(await fetch(url)).text(),ids={};
     for(const m of html.matchAll(/<(\w+)\b[^>]*\bid="([^"]+)"[^>]*>/g)){const e=new Element(m[1]);e.value=m[0].match(/\bvalue="([^"]*)"/)?.[1]||'';ids[m[2]]=e;}
     const document={body:new Element('body'),getElementById:id=>{assert.ok(ids[id],'Unknown element '+id);return ids[id];},createElement:tag=>new Element(tag)};
-    let saves=0;
-    const context=vm.createContext({document,structuredClone,Blob,URL,console,setTimeout,confirm:()=>true,fetch:async(p,options)=>{
+    let saves=0,receiverState={enabled:false,phase:'paused',message:'Paused'};
+    const context=vm.createContext({document,structuredClone,Blob,URL,console,setTimeout,setInterval:()=>0,confirm:()=>true,fetch:async(p,options)=>{
       if(['/api/current','/api/read-slot'].includes(p))return {ok:true,json:async()=>({...draft,slot:137,sha256:'simulated-destination'})};
+      if(p==='/api/automation-enable'){const b=JSON.parse(options.body);assert.equal(b.slot,137);receiverState={enabled:true,phase:'waiting',slot:137,message:'Active'};return {ok:true,json:async()=>receiverState};}
+      if(p==='/api/automation-disable'){receiverState={...receiverState,enabled:false,phase:'paused',message:'Paused'};return {ok:true,json:async()=>receiverState};}
+      if(p==='/api/automation-status')return {ok:true,json:async()=>receiverState};
+      if(p==='/api/automation-latest')return {ok:true,json:async()=>({...draft,name:'REMOTE TONE',slot:137,verified:true})};
       if(p==='/api/save'){const job=JSON.parse(options.body);assert.equal(job.slot,137);assert.equal(job.draft.name,'LITTLE WING');assert.equal(job.expected_sha,'simulated-destination');saves++;return {ok:true,json:async()=>({verified:true,slot:137,backup:'simulated.json'})};}
       const r=await fetch(url+p,options);if(p==='/api/bootstrap'){const data=await r.json();data.ports={inputs:['USB-Midi 0'],outputs:['Microsoft GS Wavetable Synth 0','USB-Midi 1']};return {ok:true,json:async()=>data};}return r;
     }});
@@ -51,7 +55,11 @@ async function main(){
     await act('prepareSave');assert.ok(ids.confirmDialog.open);assert.equal(saves,0);await act('cancelSave');assert.equal(saves,0);
     await act('prepareSave');await act('commitSave');assert.equal(saves,1);assert.match(ids.status.textContent,/Gravação verificada/);
     const backup={format:'mk300-studio-1',before_raw_hex:raw.toString('hex')};ids.importFile.files=[{size:2000,text:async()=>JSON.stringify(backup)}];ids.importFile.onchange();await idle();assert.equal(ids.presetTitle.textContent,'TESTE USB');
-    console.log('PASS: actual HTTP API + frontend handlers: ports, read, recipe, sliders, library, export, confirmation/cancel/save, restore import. USB and DOM simulated; no browser rendering.');
+    await act('automationEnable');assert.ok(ids.automationDialog.open);assert.equal(receiverState.enabled,false);await act('automationConfirmEnable');assert.equal(receiverState.enabled,true);assert.ok(ids.automationSlot.disabled);
+    receiverState={...receiverState,phase:'verified',last_job_id:'a'.repeat(32),message:'Received'};await vm.runInContext('pollAutomation()',context);assert.equal(ids.presetTitle.textContent,'REMOTE TONE');
+    ids.name.value='MY DRAFT';ids.name.oninput();receiverState={...receiverState,last_job_id:'b'.repeat(32)};await vm.runInContext('pollAutomation()',context);assert.equal(ids.presetTitle.textContent,'MY DRAFT');
+    await act('automationPause');assert.equal(receiverState.enabled,false);assert.equal(ids.automationSlot.disabled,false);
+    console.log('PASS: HTTP API + frontend: ports, read, recipe, sliders, library, export, save/cancel, restore, automation arm/receive/pause, dirty draft preserved. USB and DOM simulated; no browser rendering.');
   }finally{server.kill();await new Promise(r=>server.once('exit',r));fs.rmSync(temp,{recursive:true,force:true});}
 }
 main().catch(e=>{console.error(e);process.exitCode=1;});

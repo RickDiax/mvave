@@ -1,6 +1,8 @@
 # MK300 Studio
 
-Editor visual local para Windows: usa o navegador como interface e Python para conversar com a MK-300 pela USB. Não exige hospedar um site, criar conta ou enviar presets à nuvem.
+**Fluxo principal: pedir um timbre ao ChatGPT e receber por USB.** Veja [ativar a recepção automática](../automation/LEIA-ME.md). A interface agora destaca o receptor; o editor manual abaixo serve para conferir e ajustar versões.
+
+Aplicativo local para Windows: usa o navegador como interface e Python para conversar com a MK-300 pela USB. A conexão USB e os backups ficam no computador; a recepção automática usa o seu GitHub como ponte.
 
 ## Abrir
 
