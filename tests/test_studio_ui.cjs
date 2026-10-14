@@ -31,7 +31,7 @@ async function main(){
     ['WAH','FX','GATE','DS','AMP','CAB','EQ','MOD','DLY','REV','VOL'].forEach((b,i)=>draft.blocks[b]={model_index:raw[54+i],enabled:!!raw[43+i],knobs:Array.from({length:12},(_,k)=>raw.readInt16LE(66+i*24+k*2))});
     const html=await(await fetch(url)).text(),ids={};
     for(const m of html.matchAll(/<(\w+)\b[^>]*\bid="([^"]+)"[^>]*>/g)){const e=new Element(m[1]);e.value=m[0].match(/\bvalue="([^"]*)"/)?.[1]||'';ids[m[2]]=e;}
-    const document={body:new Element('body'),getElementById:id=>{assert.ok(ids[id],'Unknown element '+id);return ids[id];},createElement:tag=>new Element(tag)};
+    const document={body:new Element('body'),getElementById:id=>{assert.ok(ids[id],'Unknown element '+id);return ids[id];},createElement:tag=>new Element(tag),createElementNS:(_,tag)=>new Element(tag)};
     let saves=0,receiverState={enabled:false,phase:'paused',message:'Paused'};
     const context=vm.createContext({document,structuredClone,Blob,URL,console,setTimeout,setInterval:()=>0,confirm:()=>true,fetch:async(p,options)=>{
       if(['/api/current','/api/read-slot'].includes(p))return {ok:true,json:async()=>({...draft,slot:137,sha256:'simulated-destination'})};

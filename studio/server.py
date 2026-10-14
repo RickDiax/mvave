@@ -15,6 +15,14 @@ from core import CATALOG, CONTROL_START, MODELS, Library, Midi, decode, encode, 
 from automation import Receiver
 
 FOLDER = Path(__file__).resolve().parent
+ASSETS = {
+    '/assets/brand.svg': ('brand.svg', 'image/svg+xml'),
+    '/assets/icons.svg': ('icons.svg', 'image/svg+xml'),
+    '/assets/preset.svg': ('preset.svg', 'image/svg+xml'),
+    '/assets/mk300-studio.ico': ('mk300-studio.ico', 'image/x-icon'),
+    '/favicon.ico': ('mk300-studio.ico', 'image/x-icon'),
+    '/assets/mk300-studio-192.png': ('mk300-studio-192.png', 'image/png'),
+}
 TOKEN = secrets.token_urlsafe(32)
 LOCK = threading.Lock()
 DATA = Path(os.environ.get('LOCALAPPDATA') or str(Path.home())) / 'MK300Studio'
@@ -128,6 +136,9 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if not self.headers_ok():
             return self.reply(403, {'error': 'Host recusado.'})
+        if self.path in ASSETS:
+            name, kind = ASSETS[self.path]
+            return self.reply(200, (FOLDER / 'assets' / name).read_bytes(), kind)
         if self.path == '/':
             html = (FOLDER / 'index.html').read_text(encoding='utf-8').replace('__APP_TOKEN__', TOKEN)
             return self.reply(200, html.encode('utf-8'), 'text/html; charset=utf-8')

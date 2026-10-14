@@ -14,6 +14,12 @@ Aplicativo local para Windows: usa o navegador como interface e Python para conv
 
 O programa escuta apenas em `127.0.0.1`. Se a porta 8765 estiver ocupada, escolhe outra. Não precisa de Web MIDI no navegador. Feche o programa com Ctrl+C na janela de execução.
 
+### Ícone e atalho do Windows
+
+Execute **`CRIAR-ATALHO.cmd`** uma vez, na pasta principal. Ele cria o atalho **MK300 Studio** com o ícone do aplicativo na Área de Trabalho e na própria pasta. Depois, use esse atalho para abrir. Se mover a pasta do projeto, execute novamente para atualizar os caminhos. Não exige privilégios de administrador.
+
+O Studio usa a mesma identidade no cabeçalho, na aba do navegador e no atalho. Os efeitos e comandos usam ícones SVG locais, sem fontes de ícones ou serviços externos. O arquivo `studio/assets/mk300-studio.ico` inclui resoluções de 16 a 256 pixels para o Windows; `brand.svg` é o original vetorial. Os ícones dos arquivos JSON no Explorador seguem a associação de arquivos do Windows; esta atualização não modifica essas associações.
+
 ## Criar e gravar
 
 - Leia um preset como ponto de partida: isso conserva os bytes e controles que ainda não foram totalmente decodificados.
