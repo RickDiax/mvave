@@ -52,3 +52,29 @@ Execucao real em Windows/MK-300 V75 ainda depende do teste local. Este recurso e
 A versao 1.5.8 publica wheels Windows x64 para CPython 3.11 e 3.12. O instalador anterior aceitava qualquer Python mais novo e poderia selecionar uma versao sem wheel, tentando compilar C++. O instalador corrigido seleciona 3.12/3.11 x64 e usa `--only-binary=:all:`; ele nunca tenta compilar. Fonte: https://pypi.org/project/python-rtmidi/1.5.8/#files
 
 Se voce ja tentou instalar, baixe novamente o ZIP e extraia para uma nova pasta. A antiga `.venv` nao sera usada. Nao e preciso instalar Visual Studio nem desinstalar seu Python atual. Depois de instalar Python 3.12 x64, execute o novo `instalar.cmd` e o novo `testar.cmd`.
+
+## Teste autorizado de copia: 142 para 137
+
+Apos a leitura funcionar, o usuario escolheu USER PRESET 137 para testar gravacao. A origem e o **Belief salvo na memoria, posicao 142**, nao alteracoes ainda nao salvas no editor.
+
+Se ja instalou as dependencias, copie apenas `copiar_teste.py` e `copiar-teste.cmd` desta versao para a pasta `windows` existente, ao lado de `diagnostico.py`. Mantenha seu ambiente `.venv-midi`.
+
+1. Feche M-EFCS e DAW e deixe a pedaleira ligada por USB.
+2. Execute `copiar-teste.cmd`. Ja usa as portas observadas nesta unidade: USB-Midi 0 / USB-Midi 1.
+3. O programa le a origem e o destino. Recusa qualquer origem com nome diferente de Belief e qualquer destino diferente de USER PRESET (com numero opcional).
+4. Guarda localmente as imagens originais de ambas as posicoes no JSON de diagnostico antes de escrever.
+5. Copia os 448 bytes da origem, alterando somente o nome para TESTE USB, grava apenas a posicao 137 e verifica por leitura de retorno.
+6. Quando disser “Copia salva e verificada byte a byte”, selecione **137** na pedaleira para ouvir.
+7. Envie o JSON `copia_142_137_...` de `windows/diagnosticos`.
+
+O programa nao carrega presets, nao muda configuracoes globais e nao modifica AMP/CAB ou a posicao 142. Nao tem opcao para forcar sobrescrita de um preset nomeado. O JSON e uma copia tecnica dos dois registros, nao um backup completo nem um arquivo importavel no M-EFCS.
+
+Para fazer apenas a previa, no terminal da pasta windows:
+
+```bat
+.venv-midi\Scripts\python.exe copiar_teste.py
+```
+
+Em caso de falha apos iniciar escrita, nao repita a gravacao automaticamente; confira a posicao 137 e envie o relatorio. A ausencia de ACK nao garante que nada tenha sido escrito.
+
+Os testes simulados cobrem preservacao dos bytes desconhecidos, recusa de destino nomeado, backup antes da escrita, verificacao de retorno, enderecamento exclusivo de 137 e rejeicao de comandos para origem/globais/carregamento. O teste fisico de escrita na V75 ainda precisa ser executado.
