@@ -5,14 +5,29 @@ from datetime import datetime, timezone
 import hashlib
 import json
 from pathlib import Path
+import re
 import threading
 import time
 from urllib.request import Request, urlopen
+from urllib.error import HTTPError
+import uuid
 
 from core import MODELS, Library, Midi, decode, digest, encode, profile
 
-INBOX_URL = 'https://raw.githubusercontent.com/RickDiax/mvave/main/automation/inbox.json'
 CATALOG_SHA256 = hashlib.sha256((Path(__file__).parent / 'catalog.json').read_bytes()).hexdigest()
+
+
+def valid_repository(value):
+    if not isinstance(value, str) or not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9_.-]{1,100}', value) or value.split('/')[-1] in ('.', '..'):
+        raise ValueError('Informe o repositorio no formato usuario/projeto, sem URL.')
+    return value
+
+
+def inbox_url(repository, channel):
+    valid_repository(repository)
+    if not isinstance(channel, str) or not re.fullmatch('[0-9a-f]{32}', channel):
+        raise ValueError('Canal de entrega invalido.')
+    return f'https://raw.githubusercontent.com/{repository}/main/automation/channels/{channel}.json'
 
 
 def utcnow():
@@ -26,18 +41,24 @@ def stamp(value):
     return d
 
 
-def fetch_inbox():
-    # Only this fixed repository can supply recipes; no arbitrary callback/download URLs.
-    req = Request(INBOX_URL + '?poll=' + str(int(time.time() // 15)),
+def fetch_inbox(repository, channel):
+    # Fixed HTTPS host + validated repository/channel; never a shared fallback inbox.
+    url = inbox_url(repository, channel)
+    req = Request(url + '?poll=' + str(int(time.time() // 15)),
                   headers={'User-Agent': 'MK300-Studio/2', 'Cache-Control': 'no-cache'})
-    with urlopen(req, timeout=8) as response:
-        if response.geturl().split('?')[0] != INBOX_URL:
-            raise ValueError('Redirecionamento da caixa de entrada recusado.')
-        data = response.read(100001)
+    try:
+        with urlopen(req, timeout=8) as response:
+            if response.geturl().split('?')[0] != url:
+                raise ValueError('Redirecionamento da caixa de entrada recusado.')
+            data = response.read(100001)
+    except HTTPError as e:
+        if e.code == 404:
+            return {'format':'mk300-tone-inbox-2', 'channel_id':channel, 'job':None}
+        raise
     if len(data) > 100000:
         raise ValueError('Pedido excede 100 KB.')
     result = json.loads(data)
-    if not isinstance(result, dict) or result.get('format') != 'mk300-tone-inbox-1':
+    if not isinstance(result, dict) or result.get('format') != 'mk300-tone-inbox-2' or result.get('channel_id') != channel:
         raise ValueError('Formato de caixa de entrada desconhecido.')
     return result
 
@@ -77,10 +98,16 @@ def compile_recipe(raw, recipe):
 
 
 class Receiver:
-    def __init__(self, folder, lock, fetcher=fetch_inbox, midi_factory=Midi, clock=utcnow):
+    def __init__(self, folder, lock, fetcher=None, midi_factory=Midi, clock=utcnow):
         self.folder = Path(folder)
         self.folder.mkdir(parents=True, exist_ok=True)
         self.path = self.folder / 'automation.json'
+        self.settings_path = self.folder / 'receiver.json'
+        self.settings = {'channel_id':uuid.uuid4().hex, 'repository':'RickDiax/mvave', 'input':'', 'output':'', 'slot':None, 'instrument':''}
+        if self.settings_path.exists():
+            self.settings.update(json.loads(self.settings_path.read_text(encoding='utf-8')))
+        inbox_url(self.settings['repository'], self.settings['channel_id'])
+        self.save_settings()
         self.lock, self.fetcher, self.midi_factory, self.clock = lock, fetcher, midi_factory, clock
         self.enabled = False  # arming requires a successful local read each program session
         self.config = None
@@ -93,6 +120,39 @@ class Receiver:
             self.state.update(old)
             self.state.update(phase='paused', message='Recepcao pausada ao reiniciar. Confira o destino e ative novamente.')
 
+    @property
+    def channel_id(self):
+        return self.settings['channel_id']
+
+    def save_settings(self):
+        tmp = self.settings_path.with_suffix('.tmp')
+        tmp.write_text(json.dumps(self.settings, ensure_ascii=False, indent=2), encoding='utf-8')
+        tmp.replace(self.settings_path)
+
+    def configure(self, body):
+        repository = valid_repository(body['repository'].strip())
+        slot = body.get('slot')
+        if slot is not None and (type(slot) is not int or not 1 <= slot <= 160):
+            raise ValueError('A posicao deve estar entre 1 e 160.')
+        for key in ('input', 'output', 'instrument'):
+            if not isinstance(body.get(key, ''), str) or len(body.get(key, '')) > 200:
+                raise ValueError('Nome de porta invalido.')
+        if self.enabled:
+            self.pause('Configuracao alterada. Ative o recebimento novamente.')
+        self.settings.update(repository=repository, slot=slot, input=body.get('input',''), output=body.get('output',''), instrument=body.get('instrument',''))
+        self.save_settings()
+        return self.status()
+
+    def download(self):
+        return self.fetcher() if self.fetcher else fetch_inbox(self.settings['repository'], self.channel_id)
+
+    def check_repository(self):
+        req = Request('https://api.github.com/repos/' + self.settings['repository'], headers={'User-Agent':'MK300-Studio/2'})
+        with urlopen(req, timeout=8) as response:
+            info = json.loads(response.read(100000))
+        if info.get('private') or info.get('default_branch') != 'main':
+            raise ValueError('Use um repositorio publico com branch main. Um fork deste projeto funciona.')
+
     def persist(self):
         tmp = self.path.with_suffix('.tmp')
         tmp.write_text(json.dumps(self.state, ensure_ascii=False, indent=2), encoding='utf-8')
@@ -100,7 +160,7 @@ class Receiver:
 
     def status(self):
         return {**{k: v for k, v in self.state.items() if k != 'seen'}, 'enabled': self.enabled,
-                'slot': self.config['slot'] if self.config else None, 'catalog_sha256': CATALOG_SHA256}
+                'slot': self.config['slot'] if self.config else None, 'catalog_sha256': CATALOG_SHA256, 'settings':dict(self.settings)}
 
     def enable(self, input_name, output_name, slot):
         self.enabled = False
@@ -108,7 +168,11 @@ class Receiver:
         if type(slot) is not int or not 1 <= slot <= 160:
             raise ValueError('Escolha a posicao reservada entre 1 e 160.')
         # Check reachability before reading and authorizing this destination.
-        document = self.fetcher()
+        if self.fetcher is None:
+            self.check_repository()
+        document = self.download()
+        if document.get('format') != 'mk300-tone-inbox-2' or document.get('channel_id') != self.channel_id:
+            raise ValueError('A caixa de entrada pertence a outro computador.')
         midi = self.midi_factory(input_name, output_name)
         try:
             raw = midi.slot(slot)
@@ -117,6 +181,8 @@ class Receiver:
             midi.close()
         self.config = {'input': input_name, 'output': output_name, 'slot': slot,
                        'expected_sha': digest(raw), 'armed_at': self.clock()}
+        self.settings.update(input=input_name, output=output_name, slot=slot)
+        self.save_settings()
         prior = document.get('job')
         if isinstance(prior, dict) and isinstance(prior.get('id'), str):
             self.remember(prior['id'])  # activating never replays an old published request
@@ -142,13 +208,15 @@ class Receiver:
         # Called under the shared USB lock. Never retries a job after writing has begun.
         if not self.enabled:
             return
-        if document.get('format') != 'mk300-tone-inbox-1':
+        if document.get('format') != 'mk300-tone-inbox-2' or document.get('channel_id') != self.channel_id:
             raise ValueError('Caixa de entrada invalida.')
         job = document.get('job')
         if job is None:
             return
         if not isinstance(job, dict):
             raise ValueError('Pedido invalido.')
+        if job.get('channel_id') != self.channel_id:
+            raise ValueError('Este pedido pertence a outro computador; nenhuma gravacao foi feita.')
         key = job.get('id')
         if not isinstance(key, str) or len(key) != 32 or any(c not in '0123456789abcdef' for c in key):
             raise ValueError('Identificador de pedido invalido.')
@@ -164,9 +232,9 @@ class Receiver:
             return
         if (created - now).total_seconds() > 300 or not 0 < (expires - created).total_seconds() <= 86400:
             raise ValueError('Prazo do pedido invalido. Confira o relogio do computador.')
-        if job.get('format') != 'mk300-tone-job-1' or job.get('catalog_sha256') != CATALOG_SHA256:
+        if job.get('format') != 'mk300-tone-job-2' or job.get('catalog_sha256') != CATALOG_SHA256:
             raise ValueError('Pedido e Studio usam formatos/catalogos diferentes. Atualize o Studio.')
-        if set(job) - {'id','format','created_at','expires_at','catalog_sha256','recipe','request','sources','notes'}:
+        if set(job) - {'id','channel_id','format','created_at','expires_at','catalog_sha256','recipe','request','sources','notes'}:
             raise ValueError('Campos extras no pedido recusados.')
         midi = self.midi_factory(self.config['input'], self.config['output'])
         try:
@@ -202,7 +270,7 @@ class Receiver:
                 return
             epoch = self.epoch
         try:
-            document = self.fetcher()
+            document = self.download()
         except Exception as e:
             with self.lock:
                 if self.enabled and self.epoch == epoch:

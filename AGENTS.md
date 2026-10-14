@@ -1,16 +1,17 @@
-# MK-300: objetivo e fluxo de criação de timbres
+# MK300 Studio — criação e entrega de timbres
 
-O usuário quer pedir um timbre de música/artista no ChatGPT e recebê-lo na MK-300 automaticamente. Não tratar o projeto apenas como um editor manual nem pedir ao usuário que copie parâmetros ou importe JSON para cada timbre.
+O fluxo principal é pedir música/artista ao ChatGPT e receber o preset na MK-300. O editor manual é auxiliar. A interface possui Receber timbres, Meus timbres, Editor e Configurações. Não inserir presets pessoais fixos, contas, portas ou destinos de exemplo como se fossem os dados de todo usuário.
 
-Para pedidos musicais com envio ao Studio:
+Para gerar e enviar um timbre:
 
-1. Consulte a planilha do usuário `MK-300_M-VAVE_V73_PTBR.xlsx` quando acessível. Ela é a referência de modelos pedida pelo usuário. Leia `studio/catalog.json`, `automation/catalog.sha256` e `automation/LEIA-ME.md` da versão atual antes de gerar uma receita. Não confundir números da tela com índices zero-based de protocolo.
-2. Pesquise a música/artista e os equipamentos/efeitos em fontes pertinentes. Distingua informações documentadas de aproximações para a pedaleira. Considere a Strat com single coils informada pelo usuário. Não invente fontes ou fidelidade sonora comprovada.
-3. Monte uma receita compatível com os parâmetros e faixas do catálogo. Preserve as atribuições Ctrl A/B existentes; não alegue tê-las reprogramado. Para controles novos ainda não decodificados, explique a limitação.
-4. Quando o pedido autorizar o envio, publique um novo job em `automation/inbox.json`, no repositório RickDiax/mvave, usando o protocolo documentado. O usuário já definiu que pedir a criação e envio de um timbre deve acionar esse fluxo. Não precisa de confirmação por preset se o receptor local estiver ativo e o pedido estiver no escopo solicitado. O destino é reservado no programa, não no job.
-5. Use novo UUID e datas atuais com fuso a cada pedido; o receptor ignora pedidos anteriores à ativação. A caixa de entrada contém apenas o pedido mais recente. Não publique vários timbres seguidos para a mesma posição sem o usuário pedir esse comportamento.
-6. Após publicar, diga “receita enviada ao Studio pelo GitHub”. Só afirme gravação física verificada se houver retorno do Studio ou confirmação explícita do usuário. O ChatGPT não recebe automaticamente o resultado USB nesta versão.
+1. Consulte a planilha MK-300 fornecida pelo usuário quando acessível, além de `studio/catalog.json`, `automation/catalog.sha256` e `automation/LEIA-ME.md` atuais. Respeite números de tela versus índices zero-based. Não presumir que toda unidade tem o mesmo conteúdo em AMP/CAB.
+2. Pesquise a música/artista em fontes pertinentes. Separe informações documentadas das aproximações. Considere o instrumento informado pelo usuário; não presumir Strat para todos. Não invente fontes ou fidelidade comprovada.
+3. Obtenha do vínculo copiado do Studio o **repositório e o channel_id** do computador. Use o vínculo já presente na conversa quando disponível; não peça de novo sem necessidade. Se ainda não houver vínculo, prepare a receita e peça somente esse vínculo antes de publicá-la. Não invente um canal.
+4. Publique a receita no arquivo `automation/channels/CHANNEL_ID.json` do repositório indicado. Envelope `mk300-tone-inbox-2` e job `mk300-tone-job-2` devem conter o mesmo `channel_id`. Não publicar no antigo `automation/inbox.json` nem em outros canais. O destino é reservado localmente, nunca informado no job.
+5. Novo UUID e datas atuais com fuso para cada job; validade máxima de 24 horas. Pedidos antigos à ativação são ignorados. Há um pendente por canal. Não publicar várias substituições seguidas sem instrução do usuário.
+6. O usuário pediu geração e envio autônomos quando solicitar um timbre. Não pedir confirmação por preset se houver vínculo, escopo autorizado e receptor ativo informado. O backend mantém backup antes de escrever, conferência do destino, preservação dos bytes/controles e identificação persistente contra repetição.
+7. Diga “receita enviada ao canal do seu Studio” após publicar. Não afirmar gravação física sem relatório ou confirmação explícita do usuário: o resultado USB não retorna automaticamente ao ChatGPT.
 
-O receptor exige computador ligado, programa aberto, internet e pedaleira USB conectada. NAM/AM2/IR não são importados automaticamente nesta versão. Não gerar pedidos ativos para testes de código; a caixa de entrada de desenvolvimento deve continuar com `job: null` até um pedido musical real do usuário.
+Preserve atribuições existentes Ctrl A/B e expressão; não alegue reprogramá-las. NAM/AM2/IR não são importados por esse caminho. Exige Windows, programa aberto, internet, acesso do ChatGPT ao repositório e MK-300 conectada.
 
-Alterações no receptor devem conservar backup antes da primeira escrita, validação do destino, preservação dos controles/bytes desconhecidos, identificação persistente de pedidos processados e ausência de repetição de escrita após falha. Rode os testes pertinentes antes de publicar.
+Alterações no aplicativo devem rodar os testes pertinentes e manter isolamento de canais. Não publicar receita ativa de teste sem pedido musical real. Não migrar dados de usuário apagando a biblioteca ou seus presets salvos.

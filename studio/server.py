@@ -22,6 +22,7 @@ ASSETS = {
     '/assets/mk300-studio.ico': ('mk300-studio.ico', 'image/x-icon'),
     '/favicon.ico': ('mk300-studio.ico', 'image/x-icon'),
     '/assets/mk300-studio-192.png': ('mk300-studio-192.png', 'image/png'),
+    '/assets/studio.css': ('studio.css', 'text/css; charset=utf-8'),
 }
 TOKEN = secrets.token_urlsafe(32)
 LOCK = threading.Lock()
@@ -40,6 +41,8 @@ def ports():
 
 
 def dispatch(route, body):
+    if route == '/api/settings':
+        return RECEIVER.configure(body)
     if route == '/api/automation-latest':
         key = RECEIVER.state.get('last_job_id')
         if not key:
@@ -67,23 +70,6 @@ def dispatch(route, body):
     if route == '/api/export':
         raw = encode(body['raw_hex'], body['draft'])
         return {'format': 'mk300-studio-1', 'name': decode(raw)['name'], 'raw_hex': raw.hex()}
-    if route == '/api/recipe':
-        # Built-in recipe applies only to a loaded preset: it inherits controls and unknown bytes.
-        draft = body['draft']
-        recipe = json.loads((FOLDER.parent / 'windows/little_wing.json').read_text(encoding='utf-8'))
-        recipe['blocks']['DS']['knobs'] = [25, 35]  # incorporates the user's fuzz feedback
-        draft.update(name=recipe['name'], volume=recipe['preset_volume'], bpm=recipe['bpm'], pan=recipe['pan'], chain=recipe['chain'])
-        for block, settings in recipe['blocks'].items():
-            dst = draft['blocks'][block]
-            dst['enabled'] = settings['enabled']
-            if 'model_index' in settings:
-                model = settings['model_index']
-                tail = dst['knobs'][:] if dst['model_index'] == model else [0] * 12
-                count = len(MODELS[block][model]['parameters'])
-                values = settings['knobs'][:count]
-                tail[:len(values)] = values
-                dst.update(model_index=model, knobs=tail)
-        return decode(encode(body['raw_hex'], draft))
     if route not in ('/api/current', '/api/read-slot', '/api/save', '/api/controls'):
         raise ValueError('Operacao desconhecida.')
     midi = Midi(body['input'], body['output'])

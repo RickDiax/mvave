@@ -1,59 +1,54 @@
 # MK300 Studio
 
-**Fluxo principal: pedir um timbre ao ChatGPT e receber por USB.** Veja [ativar a recepção automática](../automation/LEIA-ME.md). A interface agora destaca o receptor; o editor manual abaixo serve para conferir e ajustar versões.
+Crie timbres na conversa do ChatGPT e receba na MK-300 por USB. O aplicativo roda no Windows; o navegador é sua interface. O logo e os ícones são locais, sem fontes externas.
 
-Aplicativo local para Windows: usa o navegador como interface e Python para conversar com a MK-300 pela USB. A conexão USB e os backups ficam no computador; a recepção automática usa o seu GitHub como ponte.
+![Tela de recebimento](assets/screen-home.png)
 
 ## Abrir
 
-1. Baixe o [ZIP completo do projeto](https://github.com/RickDiax/mvave/archive/refs/heads/main.zip) e extraia tudo. As pastas `studio`, `windows` e `mvave` precisam ficar juntas.
-2. Conecte a pedaleira e feche M-EFCS/DAW.
-3. Dê dois cliques em **`ABRIR-STUDIO.cmd`**, na pasta principal. Ele chama a preparação das dependências se necessário, usando Python 3.12 ou 3.11 x64. Se faltar o Python compatível, siga a orientação exibida e abra novamente. Na primeira preparação, pressione uma tecla quando solicitado para continuar.
-4. O navegador abre automaticamente. Mantenha a janela do programa aberta. Também é possível usar `windows/abrir-studio.cmd` depois da instalação.
-5. Escolha entrada **USB-Midi 0** e saída **USB-Midi 1**, conforme as portas observadas nesta unidade, e clique **Ler atual**. Também pode ler uma posição salva de 1 a 160.
+1. Baixe o [ZIP completo](https://github.com/RickDiax/mvave/archive/refs/heads/main.zip) e extraia tudo. As pastas `studio`, `windows` e `mvave` devem permanecer juntas.
+2. Abra `ABRIR-STUDIO.cmd`. Na primeira vez, o programa prepara as dependências com Python 3.12 ou 3.11 x64. Siga a orientação da janela se faltar o Python compatível.
+3. Para um atalho com ícone na Área de Trabalho, execute `CRIAR-ATALHO.cmd` uma vez. Se mover a pasta, execute novamente.
 
-O programa escuta apenas em `127.0.0.1`. Se a porta 8765 estiver ocupada, escolhe outra. Não precisa de Web MIDI no navegador. Feche o programa com Ctrl+C na janela de execução.
+O programa usa somente `127.0.0.1`, normalmente na porta 8765, e abre o navegador. Mantenha a janela do programa aberta. Ctrl+C encerra após a operação em andamento.
 
-### Ícone e atalho do Windows
+## Quatro áreas, quatro funções
 
-Execute **`CRIAR-ATALHO.cmd`** uma vez, na pasta principal. Ele cria o atalho **MK300 Studio** com o ícone do aplicativo na Área de Trabalho e na própria pasta. Depois, use esse atalho para abrir. Se mover a pasta do projeto, execute novamente para atualizar os caminhos. Não exige privilégios de administrador.
+**Receber timbres** é a tela principal: mostra se o recebimento está ativo, o destino escolhido e a última entrega confirmada. O campo de música/artista apenas prepara um pedido para copiar; não contém um serviço de IA embutido. Depois de vincular a conversa, você pode pedir diretamente no ChatGPT.
 
-O Studio usa a mesma identidade no cabeçalho, na aba do navegador e no atalho. Os efeitos e comandos usam ícones SVG locais, sem fontes de ícones ou serviços externos. O arquivo `studio/assets/mk300-studio.ico` inclui resoluções de 16 a 256 pixels para o Windows; `brand.svg` é o original vetorial. Os ícones dos arquivos JSON no Explorador seguem a associação de arquivos do Windows; esta atualização não modifica essas associações.
+**Meus timbres** contém somente as versões salvas/recebidas neste computador. Não existe uma coleção de exemplos fixa. Importar um timbre ou backup abre um rascunho no editor sem gravar na pedaleira.
 
-## Criar e gravar
+**Editor** permite abrir o preset atual ou uma posição salva, conferir efeitos e fazer ajustes opcionais. Nada muda no áudio enquanto você edita. **Conferir e enviar** mostra a posição e o nome antes de gravar. **Guardar em Meus timbres** salva uma versão local; **Baixar arquivo** exporta um arquivo do Studio, não um arquivo nativo do M-EFCS.
 
-- Leia um preset como ponto de partida: isso conserva os bytes e controles que ainda não foram totalmente decodificados.
-- Clique em cada bloco para trocar o modelo, ativar/desativar e ajustar seus parâmetros. **Antes/Depois** move o bloco na cadeia. O rascunho não altera o áudio em tempo real.
-- **Salvar versão** cria um novo item na biblioteca. **Exportar timbre** gera um JSON do Studio para compartilhar ou guardar. Esses arquivos não são presets nativos do M-EFCS.
-- Escolha a posição de destino e clique **Conferir destino e gravar**. Confira nome e posição na janela e clique **Gravar na pedaleira**.
-- O programa relê o destino antes de escrever; se ele mudou desde a conferência, cancela. Salva um backup, envia o preset inteiro, confirma e compara os 448 bytes lidos de volta. Não altera configurações globais nem carrega o preset automaticamente.
-- Para ouvir o resultado, selecione outra posição na pedaleira e volte ao destino gravado. Alterações no rascunho só passam ao hardware depois da gravação.
+**Configurações** reúne portas MIDI, instrumento e destino dos pedidos. Nenhuma posição é escolhida de fábrica. O nome do preset de destino será mostrado antes de ativar o recebimento. A conexão configurada é lembrada, mas o recebimento precisa ser ativado novamente ao reiniciar.
 
-## Little Wing e Ctrl A/B
+Para o passo a passo do vínculo, compartilhamento e protocolo de entrega, consulte [Receber timbres pelo ChatGPT](../automation/LEIA-ME.md).
 
-O ponto de partida Little Wing inclui Plexi, gabinete correspondente, UniVibe, reverb e MW-FACE inicialmente desligado, com Fuzz **25** e Level **35**. São sugestões de timbre, não medições de um equipamento de Hendrix.
+## Outras pessoas
 
-Os controles são preservados do preset lido/importado. Se a posição 137 da sua unidade já está com **Ctrl A → MOD/UniVibe** e **Ctrl B → DS/distorção**, leia essa posição antes de criar, ou use **Herdar controles da posição 137**. Esse botão copia também expressão e os outros dados da região de controles para o rascunho. Confira as atribuições na pedaleira depois de gravar. Trocar DS por outro efeito dentro do mesmo bloco mantém a atribuição ao bloco.
+Cada instalação recebe um canal exclusivo. Outra pessoa pode criar um fork público, conectar sua conta GitHub ao ChatGPT e informar o fork em Configurações → Entrega do ChatGPT. A biblioteca e os backups ficam na conta do Windows de cada pessoa. O programa não usa a caixa de entrada de Ricardo como alternativa e não entrega um timbre a todos.
 
-## Biblioteca e restauração
+Esta é uma ferramenta local, não um site público com login e serviço central de IA. Só instalar o programa não conecta automaticamente a conversa de outra pessoa ao repositório. O vínculo copiado pelo aplicativo informa ao ChatGPT o repositório e o canal corretos, sem senha/API key.
+
+## Gravação e restauração
+
+Antes da escrita, o Studio salva a imagem original do destino. Depois envia o preset, confirma e compara os 448 bytes lidos de volta. Não altera configurações globais nem carrega o preset automaticamente. Para ouvir o resultado salvo, troque a posição na pedaleira e volte ao destino.
 
 Biblioteca: `%LOCALAPPDATA%\MK300Studio\timbres`.
 Backups: `%LOCALAPPDATA%\MK300Studio\backups`.
+Receitas recebidas: `%LOCALAPPDATA%\MK300Studio\recebidos`.
+Vínculo/configuração: `%LOCALAPPDATA%\MK300Studio\receiver.json`.
 
-Cada backup registra destino, imagem original, imagem planejada e resultado. Para recuperar o conteúdo anterior, use **Importar / restaurar JSON** e escolha o backup. O Studio carrega a imagem **anterior** no rascunho; confira e grave na posição desejada. A importação sozinha não grava nada.
+Para recuperar um preset anterior, use **Meus timbres → Abrir arquivo de timbre ou backup** e escolha o backup. A imagem anterior abre como rascunho. Confira o destino e envie para restaurar. Se o resultado de uma escrita for incerto, confira a posição antes de tentar novamente.
 
-Se houver timeout depois do envio, a situação pode ser parcial. O backup registra `uncertain`. Leia a posição para conferir antes de tentar gravar outra vez; não há repetição automática da escrita.
+## Limites
 
-## Limites desta versão
+- Protocolo observado na V73; leitura e gravação pelo editor anterior foram confirmadas pelo usuário nesta unidade V75. A versão com canais separados precisa ser conferida fisicamente em cada unidade/firmware.
+- Modelos seguem o catálogo de referência e a planilha fornecida. Nomes/conteúdo podem mudar entre bancos. Parâmetros ainda não decodificados não são adivinhados.
+- Controles Ctrl A/B e expressão são preservados do preset original. No editor, uma posição de origem pode ser escolhida explicitamente para copiar todas essas atribuições.
+- Capturas NAM/AM2 e IR continuam pelo M-EFCS. O preset não inclui os arquivos de captura/IR aos quais seus slots se referem.
+- O ícone do atalho é personalizado; as associações dos arquivos JSON no Explorador do Windows não são modificadas.
 
-- O protocolo foi observado na V73. Nesta unidade V75, leitura e gravação/cópia de presets já funcionaram. O novo aplicativo foi testado com simulações e automação dos eventos da interface usando seu diagnóstico real. Não houve teste de renderização em navegador ou teste físico do novo aplicativo; o fluxo completo ainda precisa ser conferido na pedaleira.
-- AMP/CAB/DS seguem a planilha fornecida. Nomes e conteúdo dependem do banco instalado: **71OD-Fman100 / 63FimanVt** foram confirmados pelo usuário; **MW-FACE índice 47** e **UniVibe índice 11** foram observados no diagnóstico. Outros mapeamentos ainda precisam de conferência no aparelho. O catálogo é referência, não detecção automática dos modelos.
-- Valores numéricos editáveis usam as faixas do catálogo, com escalas informadas. Valores originais fora da faixa são conservados até você editar. Enumerações sem encoding confirmado ficam bloqueadas; modelos que dependem delas devem ser selecionados no aparelho e lidos novamente.
-- Não cria nem converte capturas NAM/AM2. Importação de capturas e IR continua pelo M-EFCS. Um preset aponta para o conteúdo do slot AMP/CAB; exportar o preset não inclui a captura ou IR daquele slot.
-- Ainda não há desenho das atribuições Ctrl A/B, monitoração de áudio ou pré-escuta de efeitos no navegador.
+## Desenvolvimento
 
-## Testes de desenvolvimento
-
-Na raiz do projeto, execute `python -m unittest discover -s tests -p 'test_studio.py' -v`. Eles verificam preservação dos bytes, validação dos parâmetros, receita Little Wing, biblioteca/restauração, backup antes de escrita, interrupção em caso de falha e proteção da API local.
-
-Com Node.js disponível, `node tests/test_studio_ui.cjs` verifica os eventos da interface contra a API HTTP real, com DOM e USB simulados. Não exige pacotes npm. Opcionalmente aceita o caminho de um JSON de diagnóstico para usar um preset real como entrada.
+`python -m unittest discover -s tests -v` valida o receptor, a separação dos canais, edição, backup e gravação simulada. `node tests/test_studio_ui.cjs` verifica os eventos da interface contra a API real, com DOM e USB simulados, sem instalar pacotes npm. Nenhum teste usa uma pedaleira física.

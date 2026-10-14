@@ -58,14 +58,6 @@ class StudioTests(unittest.TestCase):
         raw[core.profile.model_offset(3)] = 250
         self.assertEqual(core.encode(raw.hex(), core.decode(bytes(raw))), bytes(raw))
 
-    def test_recipe_uses_soft_fuzz_and_preserves_controls(self):
-        raw = fixture()
-        d = server.dispatch('/api/recipe', {'raw_hex':raw.hex(), 'draft':core.decode(raw)})
-        self.assertEqual(d['blocks']['DS']['knobs'][:2], [25, 35])
-        self.assertFalse(d['blocks']['DS']['enabled'])
-        self.assertFalse(d['blocks']['MOD']['enabled'])
-        self.assertEqual(bytes.fromhex(d['raw_hex'])[core.CONTROL_START:], raw[core.CONTROL_START:])
-
     def test_library_and_backup_restoration(self):
         with tempfile.TemporaryDirectory() as folder:
             library = core.Library(folder)

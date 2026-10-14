@@ -1,4 +1,29 @@
-# mvave
+# MK300 Studio
+
+Peça um timbre de música ou artista no ChatGPT e receba na sua **M-VAVE MK-300** por USB. Aplicativo local para Windows, com biblioteca, editor opcional e backup antes de gravar.
+
+![MK300 Studio — Receber timbres](studio/assets/screen-home.png)
+
+## Começar no Windows
+
+1. Baixe o [ZIP completo](https://github.com/RickDiax/mvave/archive/refs/heads/main.zip) e extraia.
+2. Abra **ABRIR-STUDIO.cmd**. O programa orienta a preparação de Python 3.12/3.11 x64 quando necessária.
+3. Em **Configurações**, escolha as portas USB e a posição dos próximos timbres. Confira o destino e ative.
+4. Copie o vínculo da sua instalação para a conversa do ChatGPT. Depois, peça o timbre e solicite o envio.
+
+**Receber timbres · Meus timbres · Editor · Configurações** — cada área tem uma função. O recebimento não exige importar JSON ou ajustar cada parâmetro.
+
+- [Guia do aplicativo](studio/LEIA-ME.md)
+- [Vincular o ChatGPT e usar em outras contas](automation/LEIA-ME.md)
+- Para um atalho com ícone próprio, execute **CRIAR-ATALHO.cmd**.
+
+Cada instalação possui seu próprio canal. Para usar na sua conta, crie um fork público e configure o repositório no programa. Não há serviço central de IA nem site com login: a geração acontece na conversa com acesso ao GitHub; a conexão com a pedaleira acontece no computador.
+
+O editor anterior teve leitura e gravação confirmadas numa MK-300 V75; outras unidades, bancos e firmwares precisam de conferência. NAM/AM2 e IR continuam pelo M-EFCS. O novo fluxo por canais ainda precisa do primeiro teste físico.
+
+---
+
+## Biblioteca de protocolo e CLI original
 
 Control **M-VAVE pedals** over USB without the M-EFCS editor: the reverse-engineered SysEx protocol
 of the editor (shared by every pedal it supports), a Python library, a CLI, and one **device

@@ -40,7 +40,7 @@ class ReceiverTests(unittest.TestCase):
         self.writes = []
         self.opens = []
         self.fail = False
-        self.doc = {'format':'mk300-tone-inbox-1', 'job':None}
+        self.doc = {'format':'mk300-tone-inbox-2', 'job':None}
         owner = self
         class Pedal:
             def __init__(self, input_name, output_name):
@@ -67,11 +67,12 @@ class ReceiverTests(unittest.TestCase):
                 pass
         self.receiver = a.Receiver(self.temp.name, threading.Lock(), fetcher=lambda:self.doc,
                                    midi_factory=Pedal, clock=lambda:self.now)
+        self.doc['channel_id'] = self.receiver.channel_id
         self.receiver.enable('USB-Midi 0','USB-Midi 1',137)
         self.now += timedelta(seconds=5)
 
     def job(self, key='a'*32):
-        return {'format':'mk300-tone-job-1','id':key,'created_at':self.now.isoformat(),
+        return {'format':'mk300-tone-job-2','channel_id':self.receiver.channel_id,'id':key,'created_at':self.now.isoformat(),
                 'expires_at':(self.now+timedelta(hours=1)).isoformat(),
                 'catalog_sha256':a.CATALOG_SHA256, 'recipe':recipe(), 'request':'test', 'sources':[], 'notes':[]}
 
@@ -163,13 +164,14 @@ class ReceiverTests(unittest.TestCase):
     def test_pause_during_download_blocks_execution(self):
         def fetch():
             self.receiver.pause()
-            return {'format':'mk300-tone-inbox-1','job':self.job()}
+            return {'format':'mk300-tone-inbox-2','channel_id':self.receiver.channel_id,'job':self.job()}
         self.receiver.fetcher = fetch
         self.receiver.poll_once()
         self.assertFalse(self.writes)
 
     def test_arming_ignores_current_published_job_and_never_writes(self):
         self.doc['job'] = self.job()
+        self.doc['channel_id'] = self.receiver.channel_id
         self.receiver.enable('USB-Midi 0','USB-Midi 1',137)
         self.receiver.poll_once()
         self.assertFalse(self.writes)
@@ -183,18 +185,18 @@ class ReceiverTests(unittest.TestCase):
         class Response:
             def __enter__(self): return self
             def __exit__(self, *args): pass
-            def geturl(self): return a.INBOX_URL + '?poll=1'
+            def geturl(self): return a.inbox_url('RickDiax/mvave','a'*32) + '?poll=1'
             def read(self, limit):
                 self.limit = limit
-                return b'{"format":"mk300-tone-inbox-1","job":null}'
+                return json.dumps({'format':'mk300-tone-inbox-2','channel_id':'a'*32,'job':None}).encode()
         response = Response()
         with patch.object(a, 'urlopen', return_value=response):
-            self.assertIsNone(a.fetch_inbox()['job'])
+            self.assertIsNone(a.fetch_inbox('RickDiax/mvave','a'*32)['job'])
         self.assertEqual(response.limit, 100001)
         response.geturl = lambda: 'https://example.com/recipe.json'
         with patch.object(a, 'urlopen', return_value=response):
             with self.assertRaises(ValueError):
-                a.fetch_inbox()
+                a.fetch_inbox('RickDiax/mvave','a'*32)
 
     def test_future_dated_job_pauses_without_write(self):
         job = self.job()
@@ -203,6 +205,56 @@ class ReceiverTests(unittest.TestCase):
         self.deliver(job)
         self.assertFalse(self.writes)
         self.assertFalse(self.receiver.enabled)
+
+    def test_other_computer_job_never_opens_usb_or_writes(self):
+        calls = len(self.opens)
+        job = self.job()
+        job['channel_id'] = '0' * 32
+        self.deliver(job)
+        self.assertFalse(self.writes)
+        self.assertEqual(len(self.opens), calls)
+        self.assertFalse(self.receiver.enabled)
+
+    def test_other_computer_inbox_is_rejected(self):
+        self.doc.update(channel_id='0' * 32, job=self.job())
+        self.receiver.poll_once()
+        self.assertFalse(self.writes)
+        self.assertFalse(self.receiver.enabled)
+
+    def test_installations_have_separate_persistent_channels(self):
+        with tempfile.TemporaryDirectory() as other_folder:
+            other = a.Receiver(other_folder, threading.Lock(), fetcher=lambda:self.doc)
+            self.assertNotEqual(other.channel_id, self.receiver.channel_id)
+        restarted = a.Receiver(self.temp.name, threading.Lock(), fetcher=lambda:self.doc)
+        self.assertEqual(restarted.channel_id, self.receiver.channel_id)
+        self.assertFalse(restarted.enabled)
+        self.assertEqual(restarted.settings['slot'], 137)
+
+    def test_repository_change_preserves_channel_and_pauses_receiver(self):
+        channel = self.receiver.channel_id
+        state = self.receiver.configure({'repository':'AnotherUser/mvave','slot':12,'input':'In','output':'Out','instrument':'Humbucker guitar'})
+        self.assertFalse(state['enabled'])
+        self.assertEqual(self.receiver.channel_id, channel)
+        self.assertEqual(self.receiver.settings['repository'], 'AnotherUser/mvave')
+        self.assertEqual(self.receiver.settings['instrument'], 'Humbucker guitar')
+        self.assertFalse(self.writes)
+
+    def test_repository_and_channel_cannot_escape_github_path(self):
+        for repo in ['https://evil.test/x', '../mvave', 'Owner/..', 'Owner/repo/extra', 'Owner/repo?x=1', 'Owner/repo#anchor']:
+            with self.assertRaises(ValueError):
+                a.inbox_url(repo, self.receiver.channel_id)
+        with self.assertRaises(ValueError):
+            a.inbox_url('Owner/repo', '../inbox')
+
+    def test_missing_channel_waits_without_using_shared_inbox(self):
+        from urllib.error import HTTPError
+        error = HTTPError('test', 404, 'not found', None, None)
+        with patch.object(a, 'urlopen', side_effect=error) as request:
+            document = a.fetch_inbox('Other/mvave', self.receiver.channel_id)
+        self.assertEqual(request.call_count, 1)
+        self.assertEqual(document['channel_id'], self.receiver.channel_id)
+        self.assertIsNone(document['job'])
+        self.assertIn('/channels/' + self.receiver.channel_id + '.json', request.call_args[0][0].full_url)
 
 
 if __name__ == '__main__':
