@@ -5,8 +5,8 @@ Este teste lista portas MIDI e consulta o bloco global e o preset atualmente edi
 ## Executar
 
 1. Baixe o ZIP desta versao do repositorio e extraia tudo para uma pasta local. Nao execute dentro do ZIP.
-2. Instale Python 3.11 ou superior pelo site https://www.python.org/downloads/windows/ se necessario, incluindo o Python Launcher.
-3. Entre em `windows` e abra `instalar.cmd`. Ele cria um ambiente local e instala somente `mido` e `python-rtmidi`. Requer internet. Nao precisa instalar o projeto completo, Git ou tone-analyzer neste primeiro teste.
+2. Instale **Python 3.12 x64** pelo site https://www.python.org/downloads/release/python-31210/ se necessario, escolhendo Windows installer (64-bit) e incluindo o Python Launcher. Python 3.11 x64 tambem e aceito. Outras versoes/arquiteturas nao sao selecionadas para este teste.
+3. Entre em `windows` e abra `instalar.cmd`. Ele cria o ambiente local `windows/.venv-midi` e instala somente `mido` e `python-rtmidi`. Requer internet. Nao precisa instalar o projeto completo, Git ou tone-analyzer neste primeiro teste.
 4. Ligue a MK-300 e conecte-a por um cabo USB de dados. Feche M-EFCS, DAW e outros programas MIDI antes do teste.
 5. Abra `testar.cmd` e aguarde a mensagem. Um relatorio JSON sera criado em `windows/diagnosticos`.
 6. Envie o JSON ao ChatGPT para verificarmos a leitura.
@@ -46,3 +46,9 @@ Depois deste teste: conferir o catalogo da unidade, fazer backup pelo M-EFCS e p
 Testes simulados verificam consultas de leitura, rejeicao de mensagens invalidas, selecao de portas e layouts inesperados. Executar da raiz: `python -m unittest discover -s tests -p test_windows_diagnostic.py`.
 
 Execucao real em Windows/MK-300 V75 ainda depende do teste local. Este recurso e independente dos atalhos do projeto destinados a macOS.
+
+## Erro de compilador ao instalar python-rtmidi
+
+A versao 1.5.8 publica wheels Windows x64 para CPython 3.11 e 3.12. O instalador anterior aceitava qualquer Python mais novo e poderia selecionar uma versao sem wheel, tentando compilar C++. O instalador corrigido seleciona 3.12/3.11 x64 e usa `--only-binary=:all:`; ele nunca tenta compilar. Fonte: https://pypi.org/project/python-rtmidi/1.5.8/#files
+
+Se voce ja tentou instalar, baixe novamente o ZIP e extraia para uma nova pasta. A antiga `.venv` nao sera usada. Nao e preciso instalar Visual Studio nem desinstalar seu Python atual. Depois de instalar Python 3.12 x64, execute o novo `instalar.cmd` e o novo `testar.cmd`.
